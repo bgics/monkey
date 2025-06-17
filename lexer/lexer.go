@@ -25,7 +25,7 @@ func (l *Lexer) NextToken() (token.Token, error) {
 		return tok, err
 	}
 
-	ch, err := l.reader.ReadByte()
+	char, err := l.reader.ReadByte()
 
 	if err == io.EOF {
 		tok = token.Token{Type: token.EOF, Literal: ""}
@@ -34,58 +34,60 @@ func (l *Lexer) NextToken() (token.Token, error) {
 		return tok, err
 	}
 
-	newToken := func(tokenType token.TokenType) token.Token {
-		return token.Token{Type: tokenType, Literal: string(ch)}
-	}
-
-	switch ch {
+	switch char {
 	case '=':
-		tok, err = l.tryMakeTwoCharToken(ch, '=', token.EQ, token.ASSIGN)
+		tok, err = l.tryMakeTwoCharToken(char, '=', token.EQ, token.ASSIGN)
 		if err != nil {
 			return tok, err
 		}
 	case '!':
-		tok, err = l.tryMakeTwoCharToken(ch, '=', token.NOT_EQ, token.BANG)
+		tok, err = l.tryMakeTwoCharToken(char, '=', token.NOT_EQ, token.BANG)
 		if err != nil {
 			return tok, err
 		}
 	case '+':
-		tok = newToken(token.PLUS)
+		tok = newToken(token.PLUS, char)
 	case '-':
-		tok = newToken(token.MINUS)
+		tok = newToken(token.MINUS, char)
 	case '*':
-		tok = newToken(token.ASTERISK)
+		tok = newToken(token.ASTERISK, char)
 	case '/':
-		tok = newToken(token.SLASH)
+		tok = newToken(token.SLASH, char)
 	case '<':
-		tok = newToken(token.LT)
+		tok = newToken(token.LT, char)
 	case '>':
-		tok = newToken(token.GT)
+		tok = newToken(token.GT, char)
 	case '(':
-		tok = newToken(token.LPAREN)
+		tok = newToken(token.LPAREN, char)
 	case ')':
-		tok = newToken(token.RPAREN)
+		tok = newToken(token.RPAREN, char)
 	case '{':
-		tok = newToken(token.LBRACE)
+		tok = newToken(token.LBRACE, char)
 	case '}':
-		tok = newToken(token.RBRACE)
+		tok = newToken(token.RBRACE, char)
 	case ',':
-		tok = newToken(token.COMMA)
+		tok = newToken(token.COMMA, char)
 	case ';':
-		tok = newToken(token.SEMICOLON)
+		tok = newToken(token.SEMICOLON, char)
 	default:
-		if isLetter(ch) {
-			tok.Literal, err = l.readIdentifier(ch)
+		if isLetter(char) {
+			tok.Literal, err = l.readSymbol(char, isLetter)
+			if err != nil {
+				return tok, err
+			}
 			tok.Type = token.LookupIdent(tok.Literal)
-		} else if isDigit(ch) {
+		} else if isDigit(char) {
+			tok.Literal, err = l.readSymbol(char, isDigit)
+			if err != nil {
+				return tok, err
+			}
 			tok.Type = token.INT
-			tok.Literal, err = l.readNumber(ch)
 		} else {
-			tok = newToken(token.ILLEGAL)
+			tok = newToken(token.ILLEGAL, char)
 		}
 	}
 
-	return tok, err
+	return tok, nil
 }
 
 func (l *Lexer) tryMakeTwoCharToken(currentChar, expectedNextChar byte, successTokenType, failTokenType token.TokenType) (token.Token, error) {
@@ -93,7 +95,7 @@ func (l *Lexer) tryMakeTwoCharToken(currentChar, expectedNextChar byte, successT
 	nextChar, err := l.reader.ReadByte()
 
 	if err == io.EOF {
-		tok = token.Token{Type: failTokenType, Literal: string(currentChar)}
+		tok = newToken(failTokenType, currentChar)
 		return tok, nil
 	} else if err != nil {
 		return tok, err
@@ -104,7 +106,7 @@ func (l *Lexer) tryMakeTwoCharToken(currentChar, expectedNextChar byte, successT
 		return tok, nil
 	} else {
 		err = l.reader.UnreadByte()
-		tok = token.Token{Type: failTokenType, Literal: string(currentChar)}
+		tok = newToken(failTokenType, currentChar)
 		return tok, err
 	}
 }
@@ -126,7 +128,7 @@ func (l *Lexer) skipWhitespace() error {
 	}
 }
 
-func (l *Lexer) readIdentifier(startChar byte) (string, error) {
+func (l *Lexer) readSymbol(startChar byte, isSymbol func(byte) bool) (string, error) {
 	var builder strings.Builder
 	builder.WriteByte(startChar)
 
@@ -139,7 +141,7 @@ func (l *Lexer) readIdentifier(startChar byte) (string, error) {
 			return builder.String(), err
 		}
 
-		if !isLetter(ch) {
+		if !isSymbol(ch) {
 			err = l.reader.UnreadByte()
 			return builder.String(), err
 		}
@@ -148,26 +150,8 @@ func (l *Lexer) readIdentifier(startChar byte) (string, error) {
 	}
 }
 
-func (l *Lexer) readNumber(startChar byte) (string, error) {
-	var builder strings.Builder
-	builder.WriteByte(startChar)
-
-	for {
-		ch, err := l.reader.ReadByte()
-
-		if err == io.EOF {
-			return builder.String(), nil
-		} else if err != nil {
-			return builder.String(), err
-		}
-
-		if !isDigit(ch) {
-			err = l.reader.UnreadByte()
-			return builder.String(), err
-		}
-
-		builder.WriteByte(ch)
-	}
+func newToken(tokenType token.TokenType, char byte) token.Token {
+	return token.Token{Type: tokenType, Literal: string(char)}
 }
 
 func isWhitespace(ch byte) bool {
