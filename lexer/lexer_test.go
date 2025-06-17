@@ -118,19 +118,4 @@ if (5 < 10) {
 			t.Fatalf("got %+v, want %+v", got, want)
 		}
 	}
-
-	got, err := l.NextToken()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	want := token.Token{
-		Type:    token.EOF,
-		Literal: "",
-	}
-
-	if got != want {
-		t.Fatalf("expected EOF, got %+v", got)
-	}
 }

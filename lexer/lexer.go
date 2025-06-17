@@ -71,17 +71,19 @@ func (l *Lexer) NextToken() (token.Token, error) {
 		tok = newToken(token.SEMICOLON, char)
 	default:
 		if isLetter(char) {
-			tok.Literal, err = l.readSymbol(char, isLetter)
+			literal, err := l.readSymbol(char, isLetter)
 			if err != nil {
 				return tok, err
 			}
+			tok.Literal = literal
 			tok.Type = token.LookupIdent(tok.Literal)
 		} else if isDigit(char) {
-			tok.Literal, err = l.readSymbol(char, isDigit)
+			literal, err := l.readSymbol(char, isDigit)
 			if err != nil {
 				return tok, err
 			}
 			tok.Type = token.INT
+			tok.Literal = literal
 		} else {
 			tok = newToken(token.ILLEGAL, char)
 		}
@@ -106,8 +108,11 @@ func (l *Lexer) tryMakeTwoCharToken(currentChar, expectedNextChar byte, successT
 		return tok, nil
 	} else {
 		err = l.reader.UnreadByte()
+		if err != nil {
+			return tok, err
+		}
 		tok = newToken(failTokenType, currentChar)
-		return tok, err
+		return tok, nil
 	}
 }
 
