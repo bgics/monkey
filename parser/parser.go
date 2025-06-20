@@ -71,6 +71,13 @@ func New(l *lexer.Lexer) (*Parser, error) {
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 
+	p.registerPrefix(token.TRUE, p.parseBoolean)
+	p.registerPrefix(token.FALSE, p.parseBoolean)
+
+	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
+
+	p.registerPrefix(token.IF, p.parseIfExpression)
+
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
 	p.registerInfix(token.MINUS, p.parseInfixExpression)
 	p.registerInfix(token.EQ, p.parseInfixExpression)
@@ -292,6 +299,82 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 	}
 
 	expression.Right = right
+	return expression, nil
+}
+
+func (p *Parser) parseBoolean() (ast.Expression, error) {
+	return &ast.Boolean{Token: p.curToken, Value: p.curTokenIs(token.TRUE)}, nil
+}
+
+func (p *Parser) parseGroupedExpression() (ast.Expression, error) {
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	exp, err := p.parseExpression(LOWEST)
+	if err != nil {
+		return nil, err
+	}
+
+	if ok, err := p.expectPeek(token.RPAREN); err != nil {
+		return nil, err
+	} else if !ok {
+		return nil, nil
+	}
+
+	return exp, nil
+}
+
+func (p *Parser) parseIfExpression() (ast.Expression, error) {
+	expression := &ast.IfExpression{Token: p.curToken}
+
+	if ok, err := p.expectPeek(token.LPAREN); err != nil {
+		return nil, err
+	} else if !ok {
+		return nil, nil
+	}
+
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	condition, err := p.parseExpression(LOWEST)
+	if err != nil {
+		return nil, err
+	}
+
+	expression.Condition = condition
+
+	if ok, err := p.expectPeek(token.RPAREN); err != nil {
+		return nil, err
+	} else if !ok {
+		return nil, nil
+	}
+
+	if ok, err := p.expectPeek(token.LBRACE); err != nil {
+		return nil, err
+	} else if !ok {
+		return nil, nil
+	}
+
+	blockStatement := &ast.BlockStatement{Token: p.curToken, Statements: []ast.Statement{}}
+	if err := p.nextToken(); err != nil {
+		return nil, err
+	}
+
+	for !p.curTokenIs(token.RBRACE) {
+		if stmt, err := p.parseStatement(); err != nil {
+			return nil, err
+		} else if stmt != nil {
+			blockStatement.Statements = append(blockStatement.Statements, stmt)
+		}
+
+		if err := p.nextToken(); err != nil {
+			return nil, err
+		}
+	}
+
+	expression.Consequence = blockStatement
 	return expression, nil
 }
 
