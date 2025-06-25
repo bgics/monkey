@@ -3,6 +3,7 @@ package token
 const (
 	ILLEGAL = "ILLEGAL"
 	EOF     = "EOF"
+	ERROR   = "ERROR"
 
 	// Identifiers + Literals
 	IDENT = "IDENT"

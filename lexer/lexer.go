@@ -17,102 +17,94 @@ func New(input io.Reader) *Lexer {
 	return &Lexer{reader: reader}
 }
 
-func (l *Lexer) NextToken() (token.Token, error) {
+func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
 	err := l.skipWhitespace()
 
 	if err != nil {
-		return tok, err
+		return newToken(token.ERROR, err.Error())
 	}
 
 	char, err := l.reader.ReadByte()
 
 	if err == io.EOF {
-		tok = token.Token{Type: token.EOF, Literal: ""}
-		return tok, nil
+		return newToken(token.EOF, "")
 	} else if err != nil {
-		return tok, err
+		return newToken(token.ERROR, err.Error())
 	}
 
 	switch char {
 	case '=':
-		tok, err = l.tryMakeTwoCharToken(char, '=', token.EQ, token.ASSIGN)
-		if err != nil {
-			return tok, err
-		}
+		tok = l.tryMakeTwoCharToken(char, '=', token.EQ, token.ASSIGN)
 	case '!':
-		tok, err = l.tryMakeTwoCharToken(char, '=', token.NOT_EQ, token.BANG)
-		if err != nil {
-			return tok, err
-		}
+		tok = l.tryMakeTwoCharToken(char, '=', token.NOT_EQ, token.BANG)
 	case '+':
-		tok = newToken(token.PLUS, char)
+		tok = newToken(token.PLUS, string(char))
 	case '-':
-		tok = newToken(token.MINUS, char)
+		tok = newToken(token.MINUS, string(char))
 	case '*':
-		tok = newToken(token.ASTERISK, char)
+		tok = newToken(token.ASTERISK, string(char))
 	case '/':
-		tok = newToken(token.SLASH, char)
+		tok = newToken(token.SLASH, string(char))
 	case '<':
-		tok = newToken(token.LT, char)
+		tok = newToken(token.LT, string(char))
 	case '>':
-		tok = newToken(token.GT, char)
+		tok = newToken(token.GT, string(char))
 	case '(':
-		tok = newToken(token.LPAREN, char)
+		tok = newToken(token.LPAREN, string(char))
 	case ')':
-		tok = newToken(token.RPAREN, char)
+		tok = newToken(token.RPAREN, string(char))
 	case '{':
-		tok = newToken(token.LBRACE, char)
+		tok = newToken(token.LBRACE, string(char))
 	case '}':
-		tok = newToken(token.RBRACE, char)
+		tok = newToken(token.RBRACE, string(char))
 	case ',':
-		tok = newToken(token.COMMA, char)
+		tok = newToken(token.COMMA, string(char))
 	case ';':
-		tok = newToken(token.SEMICOLON, char)
+		tok = newToken(token.SEMICOLON, string(char))
 	default:
 		if isLetter(char) {
 			literal, err := l.readSymbol(char, isLetter)
 			if err != nil {
-				return tok, err
+				return newToken(token.ERROR, err.Error())
 			}
+
+			tok.Type = token.LookupIdent(literal)
 			tok.Literal = literal
-			tok.Type = token.LookupIdent(tok.Literal)
 		} else if isDigit(char) {
 			literal, err := l.readSymbol(char, isDigit)
 			if err != nil {
-				return tok, err
+				return newToken(token.ERROR, err.Error())
 			}
+
 			tok.Type = token.INT
 			tok.Literal = literal
 		} else {
-			tok = newToken(token.ILLEGAL, char)
+			tok = newToken(token.ILLEGAL, string(char))
 		}
 	}
 
-	return tok, nil
+	return tok
 }
 
-func (l *Lexer) tryMakeTwoCharToken(currentChar, expectedNextChar byte, successTokenType, failTokenType token.TokenType) (token.Token, error) {
-	var tok token.Token
+func (l *Lexer) tryMakeTwoCharToken(currentChar, expectedNextChar byte, successTokenType, failTokenType token.TokenType) token.Token {
 	nextChar, err := l.reader.ReadByte()
 
 	if err == io.EOF {
-		tok = newToken(failTokenType, currentChar)
-		return tok, nil
+		return newToken(failTokenType, string(currentChar))
 	} else if err != nil {
-		return tok, err
+		return newToken(token.ERROR, err.Error())
 	}
 
 	if nextChar == expectedNextChar {
-		tok = token.Token{Type: successTokenType, Literal: string(currentChar) + string(nextChar)}
-		return tok, nil
+		twoCharTokenLiteral := string(currentChar) + string(nextChar)
+		return newToken(successTokenType, twoCharTokenLiteral)
 	} else {
 		err = l.reader.UnreadByte()
 		if err != nil {
-			return tok, err
+			return newToken(token.ERROR, err.Error())
 		}
-		tok = newToken(failTokenType, currentChar)
-		return tok, nil
+		return newToken(failTokenType, string(currentChar))
 	}
 }
 
@@ -155,8 +147,8 @@ func (l *Lexer) readSymbol(startChar byte, isSymbol func(byte) bool) (string, er
 	}
 }
 
-func newToken(tokenType token.TokenType, char byte) token.Token {
-	return token.Token{Type: tokenType, Literal: string(char)}
+func newToken(tokenType token.TokenType, literal string) token.Token {
+	return token.Token{Type: tokenType, Literal: literal}
 }
 
 func isWhitespace(ch byte) bool {

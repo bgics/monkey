@@ -108,11 +108,7 @@ if (5 < 10) {
 	l := lexer.New(strings.NewReader(input))
 
 	for _, want := range expectedTokens {
-		got, err := l.NextToken()
-
-		if err != nil {
-			t.Fatal(err)
-		}
+		got := l.NextToken()
 
 		if got != want {
 			t.Fatalf("got %+v, want %+v", got, want)
