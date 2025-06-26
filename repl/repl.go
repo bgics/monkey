@@ -5,7 +5,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/bgics/monkey/evaluator"
 	"github.com/bgics/monkey/lexer"
+	"github.com/bgics/monkey/object"
 	"github.com/bgics/monkey/parser"
 )
 
@@ -13,6 +15,7 @@ const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
+	env := object.NewEnvironment()
 
 	for {
 		io.WriteString(out, PROMPT)
@@ -32,12 +35,16 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		io.WriteString(out, program.String())
-		io.WriteString(out, "\n")
+		if evaluated := evaluator.Eval(program, env); evaluated != nil {
+			io.WriteString(out, evaluated.Inspect())
+			io.WriteString(out, "\n")
+		}
 	}
 }
 
 func printParserErrors(out io.Writer, errors []string) {
+	io.WriteString(out, "Woops! We ran into some monkey business here!\n")
+	io.WriteString(out, " parser errors:\n")
 	for _, msg := range errors {
 		io.WriteString(out, "\t"+msg+"\n")
 	}

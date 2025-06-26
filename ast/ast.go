@@ -205,8 +205,10 @@ func (bs *BlockStatement) String() string {
 
 	out.WriteString("{\n")
 	for _, s := range bs.Statements {
-		out.WriteString("\t" + s.String())
-		out.WriteString("\n")
+		for line := range strings.SplitSeq(s.String(), "\n") {
+			out.WriteString("\t" + line)
+			out.WriteString("\n")
+		}
 	}
 	out.WriteString("}")
 
