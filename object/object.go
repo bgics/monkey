@@ -2,25 +2,35 @@ package object
 
 import (
 	"fmt"
+	"hash/fnv"
 	"strings"
 
 	"github.com/bgics/monkey/ast"
 )
 
 type ObjectType string
+type BuiltinFunction func(args ...Object) Object
 
 const (
 	INTEGER_OBJ      = "INTEGER"
+	STRING_OBJ       = "STRING"
 	BOOLEAN_OBJ      = "BOOLEAN"
+	ARRAY_OBJ        = "ARRAY"
 	NULL_OBJ         = "NULL"
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 	ERROR_OBJ        = "ERROR"
 	FUNCTION_OBJ     = "FUNCTION"
+	BUILTIN_OBJ      = "BUILTIN"
+	HASH_OBJ         = "HASH"
 )
 
 type Object interface {
 	Type() ObjectType
 	Inspect() string
+}
+
+type Hashable interface {
+	HashKey() HashKey
 }
 
 type Integer struct {
@@ -75,6 +85,93 @@ func (f *Function) Inspect() string {
 	out.WriteString(strings.Join(params, ", "))
 	out.WriteString(") ")
 	out.WriteString(f.Body.String())
+
+	return out.String()
+}
+
+type String struct {
+	Value string
+}
+
+func (s *String) Type() ObjectType { return STRING_OBJ }
+func (s *String) Inspect() string  { return s.Value }
+
+type Builtin struct {
+	Fn BuiltinFunction
+}
+
+func (b *Builtin) Type() ObjectType { return BUILTIN_OBJ }
+func (b *Builtin) Inspect() string  { return "builtin function" }
+
+type Array struct {
+	Elements []Object
+}
+
+func (a *Array) Type() ObjectType { return ARRAY_OBJ }
+func (a *Array) Inspect() string {
+	var out strings.Builder
+
+	elements := []string{}
+	for _, el := range a.Elements {
+		elements = append(elements, el.Inspect())
+	}
+
+	out.WriteString("[")
+	out.WriteString(strings.Join(elements, ", "))
+	out.WriteString("]")
+
+	return out.String()
+}
+
+type HashKey struct {
+	Type  ObjectType
+	Value uint64
+}
+
+func (b *Boolean) HashKey() HashKey {
+	var value uint64
+
+	if b.Value {
+		value = 1
+	} else {
+		value = 0
+	}
+
+	return HashKey{Type: b.Type(), Value: value}
+}
+
+func (i *Integer) HashKey() HashKey {
+	return HashKey{Type: i.Type(), Value: uint64(i.Value)}
+}
+
+func (s *String) HashKey() HashKey {
+	h := fnv.New64a()
+	h.Write([]byte(s.Value))
+
+	return HashKey{Type: s.Type(), Value: h.Sum64()}
+}
+
+type HashPair struct {
+	Key   Object
+	Value Object
+}
+
+type Hash struct {
+	Pairs map[HashKey]HashPair
+}
+
+func (h *Hash) Type() ObjectType { return HASH_OBJ }
+func (h *Hash) Inspect() string {
+	var out strings.Builder
+
+	pairs := []string{}
+	for _, pair := range h.Pairs {
+		pairs = append(pairs, fmt.Sprintf("\t%s: %s", pair.Key.Inspect(), pair.Value.Inspect()))
+	}
+
+	out.WriteString("{\n")
+	out.WriteString(strings.Join(pairs, ",\n"))
+	out.WriteString("\n}")
 
 	return out.String()
 }

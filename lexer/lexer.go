@@ -62,6 +62,14 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.COMMA, string(char))
 	case ';':
 		tok = newToken(token.SEMICOLON, string(char))
+	case '[':
+		tok = newToken(token.LBRACKET, string(char))
+	case ']':
+		tok = newToken(token.RBRACKET, string(char))
+	case ':':
+		tok = newToken(token.COLON, string(char))
+	case '"':
+		tok = l.readString()
 	default:
 		if isLetter(char) {
 			literal, err := l.readSymbol(char, isLetter)
@@ -121,6 +129,26 @@ func (l *Lexer) skipWhitespace() error {
 		if !isWhitespace(ch) {
 			err = l.reader.UnreadByte()
 			return err
+		}
+	}
+}
+
+func (l *Lexer) readString() token.Token {
+	var output strings.Builder
+
+	for {
+		ch, err := l.reader.ReadByte()
+
+		if err == io.EOF {
+			return newToken(token.ERROR, "invalid string literal, EOF reached before \"")
+		} else if err != nil {
+			return newToken(token.ERROR, err.Error())
+		}
+
+		if ch != '"' {
+			output.WriteByte(ch)
+		} else {
+			return newToken(token.STRING, output.String())
 		}
 	}
 }

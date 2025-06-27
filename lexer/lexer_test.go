@@ -26,6 +26,10 @@ if (5 < 10) {
 
 10 == 10;
 10 != 9;
+"foobar"
+"foo bar"
+[1, 2];
+{"foo": "bar"}
 `
 
 	expectedTokens := []token.Token{
@@ -102,6 +106,19 @@ if (5 < 10) {
 		{Type: token.NOT_EQ, Literal: "!="},
 		{Type: token.INT, Literal: "9"},
 		{Type: token.SEMICOLON, Literal: ";"},
+		{Type: token.STRING, Literal: "foobar"},
+		{Type: token.STRING, Literal: "foo bar"},
+		{Type: token.LBRACKET, Literal: "["},
+		{Type: token.INT, Literal: "1"},
+		{Type: token.COMMA, Literal: ","},
+		{Type: token.INT, Literal: "2"},
+		{Type: token.RBRACKET, Literal: "]"},
+		{Type: token.SEMICOLON, Literal: ";"},
+		{Type: token.LBRACE, Literal: "{"},
+		{Type: token.STRING, Literal: "foo"},
+		{Type: token.COLON, Literal: ":"},
+		{Type: token.STRING, Literal: "bar"},
+		{Type: token.RBRACE, Literal: "}"},
 		{Type: token.EOF, Literal: ""},
 	}
 
